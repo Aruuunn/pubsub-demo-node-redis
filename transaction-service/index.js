@@ -1,36 +1,41 @@
 const express = require('express');
 const formidable = require('express-formidable');
-const uuid = require('uuid').v1;
+const { nanoid } = require('nanoid');
 const redis = require('redis');
 
-const  app = express();
+const app = express();
+
+app.use(express.static(__dirname + '/public'));
+
 app.use(formidable())
 
 const redisClient = redis.createClient();
 
 
-app.use(express.static(__dirname + '/public'));
-
 
 app.post('/order', (req, res) => {
   const  { phoneNo, email, foodName } = req.fields;
 
-  const Id = uuid();
+  const Id = nanoid();
 
-  const payload = JSON.stringify({phoneNo, email, foodName, Id});
+  const orderDetails = {phoneNo, email, foodName, Id};
 
-  console.log(`Publishing order, Order Id: ${Id}  `)
+  const topic = 'order';
+  
+  const message = JSON.stringify(orderDetails);
 
-    redisClient.publish('order', payload, (err, _) => {
-       
-        if (err) {
-            console.error(err);
-            res.sendStatus(500);
-        }
+ 
+  redisClient.publish(topic, message, (err, _) => {
+      
+    console.log(`Published order details to "order" topic`)
 
-        res.status(200).send(`Order Successful!...Order Id: ${Id}`) 
-    });
+      if (err) {
+          console.error(err);
+          res.sendStatus(500);
+      }
 
+      res.status(200).send(`<h1>Order Successful</h1> Order Id: <strong>${Id}</strong>`) 
+  });
 })
 
 
